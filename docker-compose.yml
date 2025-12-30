@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "32774:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -25,7 +25,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
     ports:
-      - "3000:8001"  # ← CAMBIO: mapea 8001 interno a 3000 externo
+      - "32772:8001"  # ← CAMBIO: mapea 8001 interno a 3000 externo
     depends_on:
       - postgres
     networks:
@@ -44,7 +44,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
     ports:
-      - "3001:8000"  # ← CAMBIO: mapea 8000 interno a 3001 externo
+      - "32773:8000"  # ← CAMBIO: mapea 8000 interno a 3001 externo
     depends_on:
       - postgres
     networks:
@@ -58,8 +58,8 @@ services:
     ports:
       - "5000:3000"
     environment:
-      REACT_APP_SECURE_API: http://localhost:3000
-      REACT_APP_INSECURE_API: http://localhost:3001
+      REACT_APP_SECURE_API: http://adragportfolio.info.gf:32772
+      REACT_APP_INSECURE_API: http://adragportfolio.info.gf:32773
     depends_on:
       - secure-api
       - insecure-api
