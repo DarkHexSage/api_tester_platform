@@ -12,8 +12,8 @@ function App() {
   const [error, setError] = useState('');
   const [responseTime, setResponseTime] = useState(0);
 
-  const SECURE_API = 'http://localhost:3000';
-  const INSECURE_API = 'http://localhost:3001';
+  const SECURE_API = 'http://adragportfolio.info.gf:32772';
+  const INSECURE_API = 'http://adragportfolio.info.gf:32773';
 
   const currentAPI = apiMode === 'secure' ? SECURE_API : INSECURE_API;
 
