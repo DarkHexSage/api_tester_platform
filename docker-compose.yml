@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: security-api-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - security-api-network
+
+  secure-api:
+    build:
+      context: ./backend/secure
+      dockerfile: Dockerfile
+    container_name: security-api-secure
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "3000:8001"  # ← CAMBIO: mapea 8001 interno a 3000 externo
+    depends_on:
+      - postgres
+    networks:
+      - security-api-network
+
+  insecure-api:
+    build:
+      context: ./backend/insecure
+      dockerfile: Dockerfile
+    container_name: security-api-insecure
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "3001:8000"  # ← CAMBIO: mapea 8000 interno a 3001 externo
+    depends_on:
+      - postgres
+    networks:
+      - security-api-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: security-api-frontend
+    ports:
+      - "5000:3000"
+    environment:
+      REACT_APP_SECURE_API: http://localhost:3000
+      REACT_APP_INSECURE_API: http://localhost:3001
+    depends_on:
+      - secure-api
+      - insecure-api
+    networks:
+      - security-api-network
+
+volumes:
+  postgres_data:
+
+networks:
+  security-api-network:
+    driver: bridge
