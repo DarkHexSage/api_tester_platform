@@ -19,7 +19,7 @@ services:
     container_name: security-api-secure
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 8001
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
@@ -38,7 +38,7 @@ services:
     container_name: security-api-insecure
     environment:
       NODE_ENV: development
-      PORT: 3001
+      PORT: 8000
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
