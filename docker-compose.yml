@@ -54,12 +54,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - PUBLIC_URL=/secure-api
+        - PUBLIC_URL=/insecure-api
     container_name: security-api-frontend
     ports:
       - "5000:3000"
     environment:
-      REACT_APP_SECURE_API: http://adragportfolio.info.gf:32772
-      REACT_APP_INSECURE_API: http://adragportfolio.info.gf:32773
+      - REACT_APP_API_URL=/secure-api/api
+      - REACT_APP_API_URL=/insecure-api/api
     depends_on:
       - secure-api
       - insecure-api
