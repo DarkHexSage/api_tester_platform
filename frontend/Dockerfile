@@ -3,13 +3,14 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-
+ARG PUBLIC_URL=/
 RUN npm ci
 
 COPY public ./public
 COPY src ./src
 
-RUN npm run build
+RUN npm run build -- --public-url=$PUBLIC_URL
+
 
 FROM nginx:alpine
 
