@@ -11,8 +11,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [responseTime, setResponseTime] = useState(0);
-  const SECURE_API = process.env.REACT_APP_API_URL || '/secure-api/api';
-  const INSECURE_API = process.env.REACT_APP_API_URL || '/insecure-api/api';
+  const SECURE_API = process.env.REACT_APP_SECURE_API || '/security-api/secure/api';
+  const INSECURE_API = process.env.REACT_APP_INSECURE_API || '/security-api/insecure/api';
 
 
   const currentAPI = apiMode === 'secure' ? SECURE_API : INSECURE_API;
