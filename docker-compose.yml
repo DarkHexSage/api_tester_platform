@@ -55,14 +55,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - PUBLIC_URL=/secure-api
-        - PUBLIC_URL=/insecure-api
+        - PUBLIC_URL=/security-api
     container_name: security-api-frontend
     ports:
       - "5000:3000"
     environment:
-      - REACT_APP_API_URL=/secure-api/api
-      - REACT_APP_API_URL=/insecure-api/api
+      - REACT_APP_API_URL=/security-api/secure/api
+      - REACT_APP_API_URL=/security-api/insecure/api
     depends_on:
       - secure-api
       - insecure-api
