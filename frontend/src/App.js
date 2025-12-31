@@ -11,9 +11,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [responseTime, setResponseTime] = useState(0);
+  const SECURE_API = process.env.REACT_APP_API_URL || '/secure-api/api';
+  const INSECURE_API = process.env.REACT_APP_API_URL || '/insecure-api/api';
 
-  const SECURE_API = 'http://adragportfolio.info.gf:32772';
-  const INSECURE_API = 'http://adragportfolio.info.gf:32773';
 
   const currentAPI = apiMode === 'secure' ? SECURE_API : INSECURE_API;
 
