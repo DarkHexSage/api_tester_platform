@@ -136,7 +136,7 @@ function App() {
                   type="text"
                   value={endpoint}
                   onChange={(e) => setEndpoint(e.target.value)}
-                  placeholder="/api/endpoint"
+                  placeholder="/v1/"
                   className="endpoint-field"
                 />
               </div>
