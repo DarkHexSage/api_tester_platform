@@ -773,9 +773,7 @@ Access to XMLHttpRequest at 'http://localhost:3000' blocked by CORS policy
 
 ## Demo
 
-<video width="100%" controls>
-  <source src="demonstration/api_tester.webm" type="video/webm">
-</video>
+[api_tester.webm](https://github.com/user-attachments/assets/8f35b114-6235-419c-ad00-5be8307a1d59)
 
 
 
