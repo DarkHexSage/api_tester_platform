@@ -12,6 +12,7 @@ A professional-grade API testing dashboard combining secure and insecure API imp
 - [Security Comparison](#security-comparison)
 - [Advanced Usage](#advanced-usage)
 - [Troubleshooting](#troubleshooting)
+- [Demo](#demo)
 
 ---
 
