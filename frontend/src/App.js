@@ -11,15 +11,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [responseTime, setResponseTime] = useState(0);
-  const SECURE_API = process.env.REACT_APP_SECURE_API || '/security-api/secure/api';
-  const INSECURE_API = process.env.REACT_APP_INSECURE_API || '/security-api/insecure/api';
 
+  // ✅ FIXED: Use correct base URLs with proper paths
+  const SECURE_API = 'http://localhost:8001';
+  const INSECURE_API = 'http://localhost:8000';
 
   const currentAPI = apiMode === 'secure' ? SECURE_API : INSECURE_API;
 
   const handleSendRequest = async () => {
     if (!endpoint.trim()) {
-      setError('Endpoint required');
+      setError('❌ Please enter an endpoint (e.g., /security-api/insecure/api/info)');
       return;
     }
 
@@ -29,45 +30,67 @@ function App() {
     const startTime = Date.now();
 
     try {
+      // ✅ Build proper URL
+      const url = `${currentAPI}${endpoint}`;
+      console.log('🔗 Requesting:', url);
+
       const config = {
         method: method,
-        url: `${currentAPI}${endpoint}`,
         headers: {
           'Content-Type': 'application/json',
         },
       };
 
+      // Parse custom headers
       if (headers.trim()) {
         try {
           const customHeaders = JSON.parse(headers);
           config.headers = { ...config.headers, ...customHeaders };
         } catch (e) {
-          setError('Invalid JSON in headers');
+          setError('❌ Invalid JSON in headers');
           setLoading(false);
           return;
         }
       }
 
+      // Parse request body for POST/PUT/PATCH
       if (['POST', 'PUT', 'PATCH'].includes(method) && requestBody.trim()) {
         try {
-          config.data = JSON.parse(requestBody);
+          config.body = JSON.stringify(JSON.parse(requestBody));
         } catch (e) {
-          setError('Invalid JSON in request body');
+          setError('❌ Invalid JSON in request body');
           setLoading(false);
           return;
         }
       }
 
-      const res = await fetch(config.url, {
-        method: config.method,
-        headers: config.headers,
-        body: config.data ? JSON.stringify(config.data) : undefined,
-      });
-
+      // Make fetch request
+      const res = await fetch(url, config);
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
 
-      const data = await res.json();
+      // Try to parse JSON response
+      let data;
+      const contentType = res.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        // If not JSON, show error
+        const text = await res.text();
+        if (text.includes('<!doctype') || text.includes('<html')) {
+          setError('❌ API returned HTML instead of JSON. Check if backend is running!');
+          setLoading(false);
+          return;
+        }
+        if (!text || text.trim() === '') {
+          setError('❌ Empty response from API. Check endpoint path!');
+          setLoading(false);
+          return;
+        }
+        data = { raw: text };
+      }
+
       setResponse({
         status: res.status,
         statusText: res.statusText,
@@ -76,12 +99,13 @@ function App() {
       });
 
       if (!res.ok) {
-        setError(`${res.status} ${res.statusText}`);
+        setError(`⚠️ ${res.status} ${res.statusText}`);
       }
     } catch (err) {
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
-      setError(err.message || 'Request failed');
+      console.error('Request failed:', err);
+      setError(`❌ ${err.message || 'Request failed'}`);
     } finally {
       setLoading(false);
     }
@@ -98,24 +122,24 @@ function App() {
     <div className="app">
       <div className="container">
         <header className="header">
-          <h1>API Testing Console</h1>
-          <p className="subtitle">Test and compare API implementations</p>
+          <h1>🔐 API Testing Console</h1>
+          <p className="subtitle">Test and compare Secure vs Insecure API implementations</p>
         </header>
 
         <div className="mode-toggle">
           <button
-            className={`mode-btn ${apiMode === 'secure' ? 'active' : ''} secure`}
+            className={`mode-btn secure ${apiMode === 'secure' ? 'active' : ''}`}
             onClick={() => setApiMode('secure')}
           >
             <span className="mode-indicator"></span>
-            Secure API
+            Secure API (8001)
           </button>
           <button
-            className={`mode-btn ${apiMode === 'insecure' ? 'active' : ''} insecure`}
+            className={`mode-btn insecure ${apiMode === 'insecure' ? 'active' : ''}`}
             onClick={() => setApiMode('insecure')}
           >
             <span className="mode-indicator"></span>
-            Insecure API
+            Insecure API (8000)
           </button>
         </div>
 
@@ -124,28 +148,75 @@ function App() {
             <div className="panel-header">
               <h2>Request</h2>
               <span className={`badge ${apiMode}`}>
-                {apiMode === 'secure' ? 'Protected' : 'Unprotected'}
+                {apiMode === 'secure' ? '🔒 Protected' : '⚠️ Unprotected'}
               </span>
             </div>
 
             <div className="form-group">
-              <label>Endpoint</label>
-              <div className="endpoint-input">
-                <span className="base-url">{currentAPI}</span>
-                <input
-                  type="text"
-                  value={endpoint}
-                  onChange={(e) => setEndpoint(e.target.value)}
-                  placeholder="/v1/"
-                  className="endpoint-field"
-                />
+              <label>Base URL</label>
+              <div style={{
+                padding: '10px 12px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '6px',
+                fontFamily: 'Space Mono, monospace',
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.8)',
+                marginBottom: '12px'
+              }}>
+                {currentAPI}
               </div>
+            </div>
+
+            <div className="form-group">
+              <label>Endpoint Path</label>
+              <input
+                type="text"
+                value={endpoint}
+                onChange={(e) => setEndpoint(e.target.value)}
+                placeholder="/security-api/insecure/api/info"
+                className="endpoint-field"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: '#ffffff',
+                  fontFamily: 'Space Mono, monospace',
+                  fontSize: '12px',
+                  marginBottom: '6px'
+                }}
+              />
+              <small style={{ color: 'rgba(255,255,255,0.5)', display: 'block', marginTop: '4px' }}>
+                Examples:
+                <br />
+                • /security-api/insecure/api/info (GET)
+                <br />
+                • /security-api/insecure/api/auth/register (POST)
+                <br />
+                • /security-api/insecure/api/users (GET)
+              </small>
             </div>
 
             <div className="form-row">
               <div className="form-group">
                 <label>Method</label>
-                <select value={method} onChange={(e) => setMethod(e.target.value)} className="select-field">
+                <select 
+                  value={method} 
+                  onChange={(e) => setMethod(e.target.value)} 
+                  className="select-field"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '6px',
+                    background: 'rgba(255,255,255,0.03)',
+                    color: '#ffffff',
+                    fontFamily: 'Space Mono, monospace',
+                    fontSize: '12px'
+                  }}
+                >
                   <option>GET</option>
                   <option>POST</option>
                   <option>PUT</option>
@@ -157,24 +228,48 @@ function App() {
 
             {['POST', 'PUT', 'PATCH'].includes(method) && (
               <div className="form-group">
-                <label>Body</label>
+                <label>Body (JSON)</label>
                 <textarea
                   value={requestBody}
                   onChange={(e) => setRequestBody(e.target.value)}
-                  placeholder='{"key": "value"}'
+                  placeholder='{"username": "john", "email": "john@example.com", "password": "password123"}'
                   className="textarea-field"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '6px',
+                    background: 'rgba(255,255,255,0.03)',
+                    color: '#ffffff',
+                    fontFamily: 'Space Mono, monospace',
+                    fontSize: '12px',
+                    minHeight: '100px',
+                    resize: 'vertical'
+                  }}
                   rows="4"
                 />
               </div>
             )}
 
             <div className="form-group">
-              <label>Headers</label>
+              <label>Headers (JSON)</label>
               <textarea
                 value={headers}
                 onChange={(e) => setHeaders(e.target.value)}
                 placeholder='{"Authorization": "Bearer token"}'
                 className="textarea-field"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: '#ffffff',
+                  fontFamily: 'Space Mono, monospace',
+                  fontSize: '12px',
+                  minHeight: '60px',
+                  resize: 'vertical'
+                }}
                 rows="3"
               />
             </div>
@@ -183,11 +278,43 @@ function App() {
               onClick={handleSendRequest}
               disabled={loading}
               className={`send-btn ${apiMode}`}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.25s ease',
+                marginTop: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px',
+                background: apiMode === 'secure' 
+                  ? 'rgba(16, 185, 129, 0.12)' 
+                  : 'rgba(239, 68, 68, 0.12)',
+                color: apiMode === 'secure' ? '#10b981' : '#ef4444',
+                opacity: loading ? 0.5 : 1
+              }}
             >
-              {loading ? 'Sending' : 'Send'}
+              {loading ? '⏳ Sending...' : '✉️ Send'}
             </button>
 
-            {error && <div className="error-box">{error}</div>}
+            {error && (
+              <div style={{
+                marginTop: '12px',
+                padding: '10px 12px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderLeft: '3px solid #ef4444',
+                borderRadius: '4px',
+                color: 'rgba(239, 68, 68, 0.9)',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}>
+                {error}
+              </div>
+            )}
           </div>
 
           <div className="response-panel">
@@ -195,42 +322,126 @@ function App() {
               <h2>Response</h2>
               {response && (
                 <span className="response-meta">
-                  <span className="status-badge" style={{ color: getStatusColor(response.status) }}>
+                  <span 
+                    className="status-badge" 
+                    style={{ color: getStatusColor(response.status) }}
+                  >
                     {response.status}
                   </span>
-                  <span className="response-time">{responseTime}ms</span>
+                  <span className="response-time" style={{
+                    fontSize: '11px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontFamily: 'Space Mono, monospace',
+                    fontWeight: '400',
+                    marginLeft: '10px'
+                  }}>
+                    {responseTime}ms
+                  </span>
                 </span>
               )}
             </div>
 
             {response ? (
-              <div className="response-content">
-                <div className="response-section">
-                  <h3>Status</h3>
-                  <div className="response-item">
-                    <span style={{ color: getStatusColor(response.status) }}>
-                      {response.status} {response.statusText}
-                    </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '600px', overflowY: 'auto' }}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  padding: '12px'
+                }}>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: 'rgba(255,255,255,0.7)',
+                    marginBottom: '8px',
+                    letterSpacing: '0.2px',
+                    textTransform: 'uppercase'
+                  }}>
+                    Status
+                  </h3>
+                  <div style={{
+                    fontSize: '13px',
+                    color: getStatusColor(response.status)
+                  }}>
+                    {response.status} {response.statusText}
                   </div>
                 </div>
 
-                <div className="response-section">
-                  <h3>Body</h3>
-                  <pre className="response-data">
+                <div style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  padding: '12px'
+                }}>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: 'rgba(255,255,255,0.7)',
+                    marginBottom: '8px',
+                    letterSpacing: '0.2px',
+                    textTransform: 'uppercase'
+                  }}>
+                    Body
+                  </h3>
+                  <pre style={{
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    color: 'rgba(255,255,255,0.8)',
+                    fontFamily: 'Space Mono, monospace',
+                    fontSize: '11px',
+                    overflow: 'auto',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    lineHeight: '1.4'
+                  }}>
                     {JSON.stringify(response.data, null, 2)}
                   </pre>
                 </div>
 
-                <div className="response-section">
-                  <h3>Headers</h3>
-                  <pre className="response-data">
-                    {JSON.stringify(response.headers, null, 2)}
-                  </pre>
-                </div>
+                {Object.keys(response.headers).length > 0 && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '6px',
+                    padding: '12px'
+                  }}>
+                    <h3 style={{
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: 'rgba(255,255,255,0.7)',
+                      marginBottom: '8px',
+                      letterSpacing: '0.2px',
+                      textTransform: 'uppercase'
+                    }}>
+                      Headers
+                    </h3>
+                    <pre style={{
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: '10px',
+                      borderRadius: '4px',
+                      color: 'rgba(255,255,255,0.8)',
+                      fontFamily: 'Space Mono, monospace',
+                      fontSize: '11px',
+                      overflow: 'auto',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      lineHeight: '1.4'
+                    }}>
+                      {JSON.stringify(response.headers, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="empty-state">
-                <p>Send a request to view response</p>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '280px',
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: '13px',
+                letterSpacing: '0.2px'
+              }}>
+                <p>📤 Send a request to see response here</p>
               </div>
             )}
           </div>
