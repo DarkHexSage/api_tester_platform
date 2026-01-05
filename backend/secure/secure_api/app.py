@@ -15,7 +15,7 @@ app = Flask(__name__)
 # SECURITY CONFIGURATION
 # ============================================
 
-# ✅ FIX 4 & 1: Environment variables + strong secrets
+# ✅ FIX: Environment variables + strong secrets
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-me-in-production')
 JWT_EXPIRATION_HOURS = int(os.getenv('JWT_EXPIRATION_HOURS', '24'))
 
@@ -26,10 +26,16 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
-# ✅ FIX 7: CORS properly configured
+# ✅ CORS properly configured
 CORS(app, resources={
+    r"/security-api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "max_age": 3600
+    },
     r"/api/*": {
-        "origins": ["http://localhost:8001", "https://yourdomain.com"],
+        "origins": ["http://localhost:5000", "http://localhost:8001"],
         "methods": ["GET", "POST", "PUT", "DELETE"],
         "allow_headers": ["Content-Type", "Authorization"],
         "max_age": 3600
@@ -40,7 +46,7 @@ CORS(app, resources={
 # SECURITY HEADERS
 # ============================================
 
-# ✅ FIX 10: Add security headers
+# ✅ Add security headers
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -54,7 +60,7 @@ def add_security_headers(response):
 # DATABASE
 # ============================================
 
-# ✅ FIX 6: Hash passwords with bcrypt
+# ✅ Hash passwords with bcrypt
 users = [
     {
         "id": 1,
@@ -84,7 +90,7 @@ orders = [
 # AUTHENTICATION
 # ============================================
 
-# ✅ FIX 1: Strong JWT with expiration
+# ✅ Strong JWT with expiration
 def create_token(user):
     """Create JWT with expiration"""
     return jwt.encode({
@@ -102,7 +108,7 @@ def verify_token(token):
     except:
         return None
 
-# ✅ FIX 3 & 5: Authentication required
+# ✅ Authentication required
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -138,17 +144,21 @@ def require_admin(f):
 # FIX 1: JWT Token Issues
 # ============================================
 
-@app.route('/api/v1/auth/login', methods=['POST'])
+@app.route('/security-api/secure/api/auth/login', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/login', methods=['POST', 'OPTIONS'])
 @limiter.limit("5 per minute")  # ✅ FIX 5: Rate limiting
 def login():
     """✅ SECURE: Strong JWT with expiration"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
     
     user = next((u for u in users if u['email'] == email), None)
     
-    # ✅ FIX 6: Use bcrypt for password verification
+    # ✅ Use bcrypt for password verification
     if not user or not bcrypt.checkpw(password.encode(), user['password_hash']):
         return jsonify({"error": "Invalid credentials"}), 401
     
@@ -161,9 +171,13 @@ def login():
         "token_type": "Bearer"
     })
 
-@app.route('/api/v1/auth/verify', methods=['POST'])
+@app.route('/security-api/secure/api/auth/verify', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/verify', methods=['POST', 'OPTIONS'])
 def verify():
     """Verify token"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     token = request.headers.get('Authorization', '').replace('Bearer ', '')
     
     payload = verify_token(token)
@@ -176,10 +190,14 @@ def verify():
 # FIX 2: SQL Injection - Parameterized queries
 # ============================================
 
-@app.route('/api/v1/users/<int:user_id>', methods=['GET'])
+@app.route('/security-api/secure/api/users/<int:user_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/users/<int:user_id>', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_user(user_id):
     """✅ SECURE: Parameterized access (no string concatenation)"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # ✅ In real SQL: db.execute("SELECT * FROM users WHERE id = ?", [user_id])
     user = next((u for u in users if u['id'] == user_id), None)
     
@@ -196,10 +214,14 @@ def get_user(user_id):
 # FIX 3: Broken Authentication
 # ============================================
 
-@app.route('/api/v1/admin/users', methods=['GET'])
+@app.route('/security-api/secure/api/admin/users', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/admin/users', methods=['GET', 'OPTIONS'])
 @require_admin  # ✅ REQUIRES AUTHENTICATION + ADMIN ROLE!
 def admin_users():
     """✅ SECURE: Admin endpoint requires authentication"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     return jsonify({
         "users": [{"id": u['id'], "email": u['email']} for u in users]
     })
@@ -208,10 +230,14 @@ def admin_users():
 # FIX 4: API Key Issues
 # ============================================
 
-@app.route('/api/v1/data/sensitive', methods=['GET'])
+@app.route('/security-api/secure/api/data/sensitive', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/data/sensitive', methods=['GET', 'OPTIONS'])
 @require_auth  # ✅ Use Bearer token, not URL API keys!
 def sensitive_data():
     """✅ SECURE: Token-based auth, not URL API keys"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # ✅ API key is now in Authorization header, not in URL
     return jsonify({
         "data": "Sensitive data here",
@@ -219,23 +245,17 @@ def sensitive_data():
     })
 
 # ============================================
-# FIX 5: Missing Rate Limiting
-# ============================================
-
-@app.route('/api/v1/auth/login', methods=['POST'])
-@limiter.limit("5 per minute")  # ✅ RATE LIMITING!
-def protected_login():
-    """Already has rate limiting above"""
-    pass
-
-# ============================================
 # FIX 6: IDOR (Insecure Direct Object References)
 # ============================================
 
-@app.route('/api/v1/orders/<int:order_id>', methods=['GET'])
+@app.route('/security-api/secure/api/orders/<int:order_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/orders/<int:order_id>', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_order(order_id):
     """✅ SECURE: Check if user owns the resource"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     order = next((o for o in orders if o['id'] == order_id), None)
     
     if not order:
@@ -251,10 +271,14 @@ def get_order(order_id):
 # FIX 7: CORS Misconfiguration
 # ============================================
 
+@app.route('/security-api/secure/api/profile', methods=['GET', 'POST', 'OPTIONS'])
 @app.route('/api/v1/profile', methods=['GET', 'POST', 'OPTIONS'])
 @require_auth
 def profile():
     """✅ SECURE: CORS properly configured in app init"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # CORS headers are set in the app configuration above
     # Only allowed origins can access this
     
@@ -267,10 +291,14 @@ def profile():
 # FIX 8: Mass Assignment / Parameter Pollution
 # ============================================
 
-@app.route('/api/v1/user/update', methods=['POST'])
+@app.route('/security-api/secure/api/user/update', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/user/update', methods=['POST', 'OPTIONS'])
 @require_auth
 def update_user():
     """✅ SECURE: Only allow safe fields"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json()
     
     # ✅ SECURE: Whitelist of allowed fields only!
@@ -296,10 +324,14 @@ def update_user():
 # FIX 9: Insecure Deserialization
 # ============================================
 
-@app.route('/api/v1/cache/load', methods=['POST'])
+@app.route('/security-api/secure/api/cache/load', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/cache/load', methods=['POST', 'OPTIONS'])
 @require_auth
 def load_cache():
     """✅ SECURE: Use JSON instead of pickle"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json()
     cache_data = data.get('cache_data')
     
@@ -316,10 +348,14 @@ def load_cache():
 # FIX 10: Missing Security Headers
 # ============================================
 
-@app.route('/api/v1/data', methods=['GET'])
+@app.route('/security-api/secure/api/data', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/data', methods=['GET', 'OPTIONS'])
 @require_auth
 def api_data():
     """Security headers applied to all responses"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # Headers are set in @app.after_request above
     return jsonify({"data": "secure"})
 
@@ -327,9 +363,13 @@ def api_data():
 # INFO ENDPOINT
 # ============================================
 
-@app.route('/api/v1/info', methods=['GET'])
+@app.route('/security-api/secure/api/info', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/info', methods=['GET', 'OPTIONS'])
 def api_info():
     """API information"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     return jsonify({
         "name": "Secure API",
         "version": "2.0",
@@ -348,6 +388,19 @@ def api_info():
         ]
     })
 
+# ============================================
+# HEALTH CHECK
+# ============================================
+
+@app.route('/health', methods=['GET', 'OPTIONS'])
+def health():
+    """Health check endpoint"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    return jsonify({"status": "ok"})
+
+
 if __name__ == '__main__':
     print("\n" + "="*70)
     print("🔐 SECURE API FRAMEWORK")
@@ -364,7 +417,11 @@ if __name__ == '__main__':
     print("  9. JSON serialization")
     print("  10. Security headers")
     print("\n🌐 API: http://localhost:8001")
-    print("📊 Info: http://localhost:8001/api/v1/info")
+    print("\n📊 Test Endpoints:")
+    print("   - /security-api/secure/api/info (GET)")
+    print("   - /api/v1/info (GET)")
+    print("   - /security-api/secure/api/auth/login (POST)")
+    print("   - /api/v1/auth/login (POST)")
     print("="*70 + "\n")
     
     app.run(debug=False, port=8001, host='0.0.0.0')
