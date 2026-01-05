@@ -12,15 +12,18 @@ function App() {
   const [error, setError] = useState('');
   const [responseTime, setResponseTime] = useState(0);
 
-  // ✅ FIXED: Use correct base URLs with proper paths
-  const SECURE_API = 'http://localhost:8001';
-  const INSECURE_API = 'http://localhost:8000';
-
-  const currentAPI = apiMode === 'secure' ? SECURE_API : INSECURE_API;
+  // ✅ FOR CADDY: Build full URL with Caddy routing
+  const buildUrl = (endpointPath) => {
+    if (apiMode === 'secure') {
+      return `/security-api/secure/api${endpointPath}`;
+    } else {
+      return `/security-api/insecure/api${endpointPath}`;
+    }
+  };
 
   const handleSendRequest = async () => {
     if (!endpoint.trim()) {
-      setError('❌ Please enter an endpoint (e.g., /security-api/insecure/api/info)');
+      setError('❌ Please enter an endpoint (e.g., /info, /users, /auth/login)');
       return;
     }
 
@@ -30,8 +33,8 @@ function App() {
     const startTime = Date.now();
 
     try {
-      // ✅ Build proper URL
-      const url = `${currentAPI}${endpoint}`;
+      // ✅ Build URL through Caddy proxy
+      const url = buildUrl(endpoint);
       console.log('🔗 Requesting:', url);
 
       const config = {
@@ -64,7 +67,7 @@ function App() {
         }
       }
 
-      // Make fetch request
+      // Make fetch request through Caddy
       const res = await fetch(url, config);
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
@@ -76,7 +79,6 @@ function App() {
       if (contentType && contentType.includes('application/json')) {
         data = await res.json();
       } else {
-        // If not JSON, show error
         const text = await res.text();
         if (text.includes('<!doctype') || text.includes('<html')) {
           setError('❌ API returned HTML instead of JSON. Check if backend is running!');
@@ -105,7 +107,7 @@ function App() {
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
       console.error('Request failed:', err);
-      setError(`❌ ${err.message || 'Request failed'}`);
+      setError(`❌ ${err.message || 'Request failed. Check if backend APIs are running.'}`);
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ function App() {
       <div className="container">
         <header className="header">
           <h1>🔐 API Testing Console</h1>
-          <p className="subtitle">Test and compare Secure vs Insecure API implementations</p>
+          <p className="subtitle">Test and compare Secure vs Insecure API implementations (via Caddy)</p>
         </header>
 
         <div className="mode-toggle">
@@ -132,14 +134,14 @@ function App() {
             onClick={() => setApiMode('secure')}
           >
             <span className="mode-indicator"></span>
-            Secure API (8001)
+            Secure API
           </button>
           <button
             className={`mode-btn insecure ${apiMode === 'insecure' ? 'active' : ''}`}
             onClick={() => setApiMode('insecure')}
           >
             <span className="mode-indicator"></span>
-            Insecure API (8000)
+            Insecure API
           </button>
         </div>
 
@@ -153,7 +155,7 @@ function App() {
             </div>
 
             <div className="form-group">
-              <label>Base URL</label>
+              <label>API Base Path (via Caddy)</label>
               <div style={{
                 padding: '10px 12px',
                 background: 'rgba(255,255,255,0.05)',
@@ -162,9 +164,10 @@ function App() {
                 fontFamily: 'Space Mono, monospace',
                 fontSize: '12px',
                 color: 'rgba(255,255,255,0.8)',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                wordBreak: 'break-all'
               }}>
-                {currentAPI}
+                /security-api/{apiMode}/api
               </div>
             </div>
 
@@ -174,7 +177,7 @@ function App() {
                 type="text"
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
-                placeholder="/security-api/insecure/api/info"
+                placeholder="/info"
                 className="endpoint-field"
                 style={{
                   width: '100%',
@@ -191,11 +194,17 @@ function App() {
               <small style={{ color: 'rgba(255,255,255,0.5)', display: 'block', marginTop: '4px' }}>
                 Examples:
                 <br />
-                • /security-api/insecure/api/info (GET)
+                • /info (GET)
                 <br />
-                • /security-api/insecure/api/auth/register (POST)
+                • /users (GET)
                 <br />
-                • /security-api/insecure/api/users (GET)
+                • /auth/register (POST)
+                <br />
+                • /auth/login (POST)
+                <br />
+                • /users/1 (GET)
+                <br />
+                • /admin/users (GET)
               </small>
             </div>
 
@@ -392,7 +401,8 @@ function App() {
                     fontSize: '11px',
                     overflow: 'auto',
                     border: '1px solid rgba(255,255,255,0.08)',
-                    lineHeight: '1.4'
+                    lineHeight: '1.4',
+                    maxHeight: '400px'
                   }}>
                     {JSON.stringify(response.data, null, 2)}
                   </pre>
@@ -424,7 +434,8 @@ function App() {
                       fontSize: '11px',
                       overflow: 'auto',
                       border: '1px solid rgba(255,255,255,0.08)',
-                      lineHeight: '1.4'
+                      lineHeight: '1.4',
+                      maxHeight: '200px'
                     }}>
                       {JSON.stringify(response.headers, null, 2)}
                     </pre>
