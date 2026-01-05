@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, jsonify as json_response
+from flask_cors import CORS
 import jwt
 import json
 from datetime import datetime, timedelta
@@ -9,13 +10,41 @@ import base64
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'super-secret-key-do-not-use'  # ❌ HARDCODED
 
+# ✅ CORS Configuration
+CORS(app, resources={
+    r"/security-api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "max_age": 3600
+    },
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "max_age": 3600
+    }
+})
+
+# ✅ CORS Headers
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
+
 # ============================================
 # VULNERABILITY 1: JWT TOKEN ISSUES
 # ============================================
 
-@app.route('/api/v1/auth/login', methods=['POST'])
+@app.route('/security-api/insecure/api/auth/login', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/login', methods=['POST', 'OPTIONS'])
 def login():
     """🚨 JWT with weak secret and no expiration"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json()
     email = data.get('email')
     
@@ -29,9 +58,13 @@ def login():
     return jsonify({"token": token, "message": "Login successful"})
 
 
-@app.route('/api/v1/auth/verify', methods=['POST'])
+@app.route('/security-api/insecure/api/auth/verify', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/verify', methods=['POST', 'OPTIONS'])
 def verify():
     """🚨 JWT verification with weak secret"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     token = request.headers.get('Authorization', '').replace('Bearer ', '')
     
     try:
@@ -46,9 +79,13 @@ def verify():
 # VULNERABILITY 2: SQL INJECTION IN API
 # ============================================
 
-@app.route('/api/v1/users/<user_id>', methods=['GET'])
+@app.route('/security-api/insecure/api/users/<user_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/users/<user_id>', methods=['GET', 'OPTIONS'])
 def get_user(user_id):
     """🚨 SQL Injection vulnerability"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # Simulating SQL query construction (vulnerable)
     query = f"SELECT * FROM users WHERE id = {user_id}"  # ❌ VULNERABLE
     
@@ -66,9 +103,13 @@ def get_user(user_id):
 # VULNERABILITY 3: BROKEN AUTHENTICATION
 # ============================================
 
-@app.route('/api/v1/admin/users', methods=['GET'])
+@app.route('/security-api/insecure/api/admin/users', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/admin/users', methods=['GET', 'OPTIONS'])
 def admin_users():
     """🚨 No authentication on admin endpoint"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # ❌ NO AUTHENTICATION CHECK!
     users = [
         {"id": 1, "email": "admin@example.com", "role": "admin"},
@@ -85,9 +126,13 @@ def admin_users():
 # VULNERABILITY 4: API KEY ISSUES
 # ============================================
 
-@app.route('/api/v1/data/sensitive', methods=['GET'])
+@app.route('/security-api/insecure/api/data/sensitive', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/data/sensitive', methods=['GET', 'OPTIONS'])
 def sensitive_data():
     """🚨 API key in URL or weak validation"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     api_key = request.args.get('api_key')
     
     # ❌ VULNERABLE: Hardcoded API keys accepted
@@ -106,9 +151,13 @@ def sensitive_data():
 # VULNERABILITY 5: RATE LIMITING MISSING
 # ============================================
 
-@app.route('/api/v1/brute/login', methods=['POST'])
+@app.route('/security-api/insecure/api/brute/login', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/brute/login', methods=['POST', 'OPTIONS'])
 def brute_force_login():
     """🚨 No rate limiting - enables brute force"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -126,9 +175,13 @@ def brute_force_login():
 # VULNERABILITY 6: INSECURE DIRECT OBJECT REFS (IDOR)
 # ============================================
 
-@app.route('/api/v1/orders/<order_id>', methods=['GET'])
+@app.route('/security-api/insecure/api/orders/<order_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/orders/<order_id>', methods=['GET', 'OPTIONS'])
 def get_order(order_id):
     """🚨 IDOR - Access other user's orders"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # ❌ No check if current user owns this order
     orders = {
         "1": {"id": "1", "user": "admin", "total": 1000},
@@ -147,16 +200,17 @@ def get_order(order_id):
 # VULNERABILITY 7: CORS MISCONFIGURATION
 # ============================================
 
+@app.route('/security-api/insecure/api/profile', methods=['GET', 'POST', 'OPTIONS'])
 @app.route('/api/v1/profile', methods=['GET', 'POST', 'OPTIONS'])
 def profile():
     """🚨 CORS allows all origins"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     response = jsonify({"user": "current_user", "data": "sensitive"})
     
-    # ❌ VULNERABLE: Allow all origins
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = '*'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    # ❌ VULNERABLE: Allow all origins (but CORS decorator handles this)
+    # response.headers['Access-Control-Allow-Origin'] = '*'
     
     return response
 
@@ -165,9 +219,13 @@ def profile():
 # VULNERABILITY 8: MASS ASSIGNMENT / PARAMETER POLLUTION
 # ============================================
 
-@app.route('/api/v1/user/update', methods=['POST'])
+@app.route('/security-api/insecure/api/user/update', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/user/update', methods=['POST', 'OPTIONS'])
 def update_user():
     """🚨 Mass assignment - accepts any parameter"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json()
     
     # ❌ VULNERABLE: Accepts all parameters without validation
@@ -189,9 +247,13 @@ def update_user():
 # VULNERABILITY 9: INSECURE DESERIALIZATION
 # ============================================
 
-@app.route('/api/v1/cache/load', methods=['POST'])
+@app.route('/security-api/insecure/api/cache/load', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/cache/load', methods=['POST', 'OPTIONS'])
 def load_cache():
     """🚨 Pickle deserialization"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     data = request.get_json().get('cache_data')
     
     try:
@@ -206,9 +268,13 @@ def load_cache():
 # VULNERABILITY 10: MISSING SECURITY HEADERS
 # ============================================
 
-@app.route('/api/v1/data', methods=['GET'])
+@app.route('/security-api/insecure/api/data', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/data', methods=['GET', 'OPTIONS'])
 def api_data():
     """🚨 Missing security headers"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     response = jsonify({
         "data": "API response",
         "timestamp": datetime.now().isoformat()
@@ -224,9 +290,13 @@ def api_data():
 # INFO ENDPOINT
 # ============================================
 
-@app.route('/api/v1/info', methods=['GET'])
+@app.route('/security-api/insecure/api/info', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/info', methods=['GET', 'OPTIONS'])
 def api_info():
     """API info endpoint"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     return jsonify({
         "name": "Vulnerable API",
         "version": "1.0.0",
@@ -245,6 +315,19 @@ def api_info():
     })
 
 
+# ============================================
+# HEALTH CHECK
+# ============================================
+
+@app.route('/health', methods=['GET', 'OPTIONS'])
+def health():
+    """Health check endpoint"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    return jsonify({"status": "ok"})
+
+
 if __name__ == '__main__':
     print("\n" + "="*70)
     print("🔓 VULNERABLE API SERVER")
@@ -261,7 +344,11 @@ if __name__ == '__main__':
     print("  9. Insecure Deserialization")
     print("  10. Missing Security Headers")
     print("\n🌐 API Running: http://localhost:8000")
-    print("📊 API Info: http://localhost:8000/api/v1/info")
+    print("\n📊 Test Endpoints:")
+    print("   - /security-api/insecure/api/info (GET)")
+    print("   - /api/v1/info (GET)")
+    print("   - /security-api/insecure/api/auth/login (POST)")
+    print("   - /api/v1/auth/login (POST)")
     print("="*70 + "\n")
     
     app.run(debug=True, port=8000, host='0.0.0.0')
