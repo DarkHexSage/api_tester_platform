@@ -35,8 +35,82 @@ def add_cors_headers(response):
     return response
 
 # ============================================
+# DATABASE (In-Memory)
+# ============================================
+
+# ❌ VULNERABLE: Users stored in plain text
+# ❌ VULNERABLE: IDs are sequential
+users_db = [
+    {
+        "id": 1,
+        "username": "admin",
+        "email": "admin@example.com",
+        "password": "admin123",  # ❌ VULNERABLE: Plain text password!
+        "name": "Admin User",
+        "role": "admin",
+        "created_at": "2026-01-01T00:00:00"
+    },
+    {
+        "id": 2,
+        "username": "testuser",
+        "email": "testuser@example.com",
+        "password": "password123",  # ❌ VULNERABLE: Plain text password!
+        "name": "Test User",
+        "role": "user",
+        "created_at": "2026-01-02T00:00:00"
+    }
+]
+
+# Counter for user IDs
+next_user_id = 3
+
+# ============================================
 # VULNERABILITY 1: JWT TOKEN ISSUES
 # ============================================
+
+@app.route('/security-api/insecure/api/auth/register', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/register', methods=['POST', 'OPTIONS'])
+def register():
+    """🚨 VULNERABLE: Insecure registration"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    global next_user_id
+    
+    data = request.get_json()
+    
+    # ❌ VULNERABLE: No input validation
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    name = data.get('name', '')
+    
+    # ❌ VULNERABLE: No duplicate checking
+    # ❌ VULNERABLE: No password validation (strength)
+    # ❌ VULNERABLE: No email validation
+    
+    # Create user
+    new_user = {
+        "id": next_user_id,
+        "username": username,
+        "email": email,
+        "password": password,  # ❌ VULNERABLE: Stored in plain text!
+        "name": name,
+        "role": "user",  # ❌ VULNERABLE: Anyone can be a user
+        "created_at": datetime.now().isoformat()
+    }
+    
+    users_db.append(new_user)
+    next_user_id += 1
+    
+    # ❌ VULNERABLE: Returns sensitive data including password
+    return jsonify({
+        "status": "success",
+        "message": "User registered successfully",
+        "user": new_user,
+        "warning": "Password stored in plain text - VULNERABLE!"
+    }), 201
+
 
 @app.route('/security-api/insecure/api/auth/login', methods=['POST', 'OPTIONS'])
 @app.route('/api/v1/auth/login', methods=['POST', 'OPTIONS'])
@@ -47,15 +121,35 @@ def login():
     
     data = request.get_json()
     email = data.get('email')
+    password = data.get('password')
+    
+    # ❌ VULNERABLE: No actual validation (in earlier version)
+    # Now with users_db, we can do basic lookup but still vulnerable
+    
+    user = next((u for u in users_db if u['email'] == email and u['password'] == password), None)
+    
+    if not user:
+        # ❌ VULNERABLE: Still weak - if email doesn't exist, creates token anyway
+        # For demo, we'll accept any email/password combo
+        pass
     
     # ❌ VULNERABLE: Weak secret
     token = jwt.encode(
-        {'email': email, 'role': 'user'},
+        {'email': email, 'role': user['role'] if user else 'user'},
         'super-secret-key-do-not-use',  # ❌ HARDCODED SECRET
         algorithm='HS256'
     )
     
-    return jsonify({"token": token, "message": "Login successful"})
+    return jsonify({
+        "token": token, 
+        "message": "Login successful",
+        "user": {
+            "id": user['id'] if user else None,
+            "email": user['email'] if user else email,
+            "username": user['username'] if user else None,
+            "role": user['role'] if user else 'user'
+        }
+    })
 
 
 @app.route('/security-api/insecure/api/auth/verify', methods=['POST', 'OPTIONS'])
@@ -76,26 +170,53 @@ def verify():
 
 
 # ============================================
-# VULNERABILITY 2: SQL INJECTION IN API
+# USER LISTING - VULNERABLE VERSION
 # ============================================
 
-@app.route('/security-api/insecure/api/users/<user_id>', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/insecure/api/users', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/users', methods=['GET', 'OPTIONS'])
+def list_users():
+    """🚨 VULNERABLE: List all users"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    # ❌ VULNERABLE: No authentication required
+    # ❌ VULNERABLE: Returns all user data including passwords!
+    # ❌ VULNERABLE: No filtering
+    
+    return jsonify({
+        "status": "success",
+        "count": len(users_db),
+        "users": users_db,  # ❌ VULNERABLE: Includes passwords!
+        "warning": "All users returned with passwords - CRITICAL VULNERABILITY!"
+    })
+
+
+@app.route('/security-api/insecure/api/users/<int:user_id>', methods=['GET', 'OPTIONS'])
 @app.route('/api/v1/users/<user_id>', methods=['GET', 'OPTIONS'])
 def get_user(user_id):
     """🚨 SQL Injection vulnerability"""
     if request.method == 'OPTIONS':
         return '', 204
     
+    try:
+        uid = int(user_id)
+    except:
+        uid = user_id
+    
     # Simulating SQL query construction (vulnerable)
-    query = f"SELECT * FROM users WHERE id = {user_id}"  # ❌ VULNERABLE
+    query = f"SELECT * FROM users WHERE id = {uid}"  # ❌ VULNERABLE
     
-    # In real scenario, would execute this query
-    # Attacker could do: /api/v1/users/1 OR 1=1
+    user = next((u for u in users_db if u['id'] == int(uid)), None)
     
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # ❌ VULNERABLE: Returns password
     return jsonify({
         "query_constructed": query,
         "warning": "SQL Injection detected - id parameter not sanitized",
-        "user_id": user_id
+        "user": user  # ❌ VULNERABLE: Includes password
     })
 
 
@@ -111,13 +232,8 @@ def admin_users():
         return '', 204
     
     # ❌ NO AUTHENTICATION CHECK!
-    users = [
-        {"id": 1, "email": "admin@example.com", "role": "admin"},
-        {"id": 2, "email": "user@example.com", "role": "user"}
-    ]
-    
     return jsonify({
-        "users": users,
+        "users": [{"id": u['id'], "email": u['email'], "username": u['username']} for u in users_db],
         "warning": "This endpoint requires authentication but doesn't check!"
     })
 
@@ -163,10 +279,10 @@ def brute_force_login():
     password = data.get('password')
     
     # ❌ NO RATE LIMITING - can brute force!
-    valid_password = 'correct_password'
+    user = next((u for u in users_db if u['email'] == email and u['password'] == password), None)
     
-    if password == valid_password:
-        return jsonify({"status": "success"})
+    if user:
+        return jsonify({"status": "success", "user": user})
     
     return jsonify({"status": "failed"}), 401
 
@@ -300,6 +416,7 @@ def api_info():
     return jsonify({
         "name": "Vulnerable API",
         "version": "1.0.0",
+        "total_users": len(users_db),
         "vulnerabilities": [
             "JWT Token Issues",
             "SQL Injection",
@@ -310,7 +427,10 @@ def api_info():
             "CORS Misconfiguration",
             "Mass Assignment",
             "Insecure Deserialization",
-            "Missing Security Headers"
+            "Missing Security Headers",
+            "No Input Validation",
+            "Plain Text Passwords",
+            "No Password Hashing"
         ]
     })
 
@@ -343,12 +463,14 @@ if __name__ == '__main__':
     print("  8. Mass Assignment / Parameter Pollution")
     print("  9. Insecure Deserialization")
     print("  10. Missing Security Headers")
+    print("\n👥 USER MANAGEMENT ENDPOINTS:")
+    print("  - POST /security-api/insecure/api/auth/register")
+    print("  - POST /api/v1/auth/register")
+    print("  - GET /security-api/insecure/api/users")
+    print("  - GET /api/v1/users")
+    print("  - GET /security-api/insecure/api/users/<id>")
+    print("  - GET /api/v1/users/<id>")
     print("\n🌐 API Running: http://localhost:8000")
-    print("\n📊 Test Endpoints:")
-    print("   - /security-api/insecure/api/info (GET)")
-    print("   - /api/v1/info (GET)")
-    print("   - /security-api/insecure/api/auth/login (POST)")
-    print("   - /api/v1/auth/login (POST)")
     print("="*70 + "\n")
     
     app.run(debug=True, port=8000, host='0.0.0.0')
