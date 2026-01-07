@@ -700,6 +700,7 @@ Access to XMLHttpRequest at 'http://localhost:3000' blocked by CORS policy
 ## Demo
 
 [api_tester.webm](https://github.com/user-attachments/assets/8f35b114-6235-419c-ad00-5be8307a1d59)
+- Demo: [Demo](https://adragportfolio.info.gf/security-api)
 
 ---
 
