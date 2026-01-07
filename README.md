@@ -687,14 +687,6 @@ Access to XMLHttpRequest at 'http://localhost:3000' blocked by CORS policy
 
 ---
 
-## Support & Resources
-
-### Internal Documentation
-
-- `UNIFIED_REPO_README.md` - Full repository guide
-- `MERGE_GUIDE.md` - How repos were combined
-- `IMPLEMENTATION_SUMMARY.md` - Setup instructions
-
 ### External Resources
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
