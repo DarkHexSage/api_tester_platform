@@ -29,9 +29,9 @@ limiter = Limiter(
 
 # ✅ FIX 7: CORS properly configured
 CORS(app, resources={
-    r"/api/*": {
-        "origins": ["http://localhost:3002", "http://localhost:5000", "https://yourdomain.com"],
-        "methods": ["GET", "POST", "PUT", "DELETE"],
+    r"/security-api/*": {
+        "origins": ["http://localhost:5000", "https://yourdomain.com"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "max_age": 3600
     }
@@ -181,7 +181,7 @@ def require_admin(f):
 # AUTHENTICATION ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/auth/register', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/auth/register', methods=['POST', 'OPTIONS'])
 @limiter.limit("5 per minute")
 def register():
     """✅ SECURE: Register with validation"""
@@ -244,7 +244,7 @@ def register():
         }
     }), 201
 
-@app.route('/api/v1/auth/login', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/auth/login', methods=['POST', 'OPTIONS'])
 @limiter.limit("5 per minute")  # ✅ FIX 5: Rate limiting
 def login():
     """✅ SECURE: Strong JWT with expiration"""
@@ -281,7 +281,7 @@ def login():
         }
     })
 
-@app.route('/api/v1/auth/verify', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/auth/verify', methods=['POST', 'OPTIONS'])
 def verify():
     """Verify token"""
     if request.method == 'OPTIONS':
@@ -299,7 +299,7 @@ def verify():
 # USER ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/users', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/users', methods=['GET', 'OPTIONS'])
 @require_auth
 def list_users():
     """✅ SECURE: List users with auth"""
@@ -325,7 +325,7 @@ def list_users():
         "users": safe_users
     })
 
-@app.route('/api/v1/users/<int:user_id>', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/users/<int:user_id>', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_user(user_id):
     """✅ FIX 2: SECURE: Parameterized access (no string concatenation)"""
@@ -351,7 +351,7 @@ def get_user(user_id):
         }
     })
 
-@app.route('/api/v1/users', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/users', methods=['POST', 'OPTIONS'])
 @require_admin
 def create_user():
     """✅ SECURE: Create user (admin only)"""
@@ -406,7 +406,7 @@ def create_user():
         }
     }), 201
 
-@app.route('/api/v1/users/<int:user_id>', methods=['PUT', 'OPTIONS'])
+@app.route('/security-api/secure/api/users/<int:user_id>', methods=['PUT', 'OPTIONS'])
 @require_auth
 def update_user(user_id):
     """✅ FIX 8: SECURE: Field whitelisting (no mass assignment)"""
@@ -430,9 +430,6 @@ def update_user(user_id):
         if field in data:
             user[field] = data[field]
     
-    # ✅ Protected fields - never updated
-    # user['role'], user['email'], user['username'], user['password_hash']
-    
     return jsonify({
         "status": "updated",
         "user": {
@@ -444,7 +441,7 @@ def update_user(user_id):
         }
     })
 
-@app.route('/api/v1/users/<int:user_id>', methods=['DELETE', 'OPTIONS'])
+@app.route('/security-api/secure/api/users/<int:user_id>', methods=['DELETE', 'OPTIONS'])
 @require_admin
 def delete_user(user_id):
     """✅ SECURE: Delete user (admin only)"""
@@ -469,7 +466,7 @@ def delete_user(user_id):
 # PRODUCT ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/products', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/products', methods=['GET', 'OPTIONS'])
 @require_auth
 def list_products():
     """✅ SECURE: List products with auth"""
@@ -482,7 +479,7 @@ def list_products():
         "products": products
     })
 
-@app.route('/api/v1/products/<int:product_id>', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/products/<int:product_id>', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_product(product_id):
     """✅ SECURE: Get product"""
@@ -499,7 +496,7 @@ def get_product(product_id):
         "product": product
     })
 
-@app.route('/api/v1/products', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/products', methods=['POST', 'OPTIONS'])
 @require_admin
 def create_product():
     """✅ SECURE: Create product (admin only)"""
@@ -543,7 +540,7 @@ def create_product():
 # ORDER ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/orders', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/orders', methods=['GET', 'OPTIONS'])
 @require_auth
 def list_orders():
     """✅ SECURE: List user's own orders"""
@@ -559,7 +556,7 @@ def list_orders():
         "orders": user_orders
     })
 
-@app.route('/api/v1/orders/<int:order_id>', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/orders/<int:order_id>', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_order(order_id):
     """✅ FIX 6: SECURE: Check if user owns the resource"""
@@ -580,7 +577,7 @@ def get_order(order_id):
         "order": order
     })
 
-@app.route('/api/v1/orders', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/orders', methods=['POST', 'OPTIONS'])
 @require_auth
 def create_order():
     """✅ SECURE: Create order (ownership set from token)"""
@@ -625,7 +622,7 @@ def create_order():
 # ADMIN ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/admin/users', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/admin/users', methods=['GET', 'OPTIONS'])
 @require_admin  # ✅ FIX 3: REQUIRES AUTHENTICATION + ADMIN ROLE!
 def admin_users():
     """✅ SECURE: Admin endpoint requires authentication"""
@@ -653,7 +650,7 @@ def admin_users():
 # DATA ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/data', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/data', methods=['GET', 'OPTIONS'])
 @require_auth
 def list_data():
     """✅ SECURE: List user's own data"""
@@ -669,7 +666,7 @@ def list_data():
         "data": user_data
     })
 
-@app.route('/api/v1/data', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/data', methods=['POST', 'OPTIONS'])
 @require_auth
 def create_data():
     """✅ SECURE: Create data (ownership set from token)"""
@@ -707,7 +704,7 @@ def create_data():
 # SECURITY TEST ENDPOINTS
 # ============================================
 
-@app.route('/api/v1/data/sensitive', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/data/sensitive', methods=['GET', 'OPTIONS'])
 @require_auth  # ✅ FIX 4: Use Bearer token, not URL API keys!
 def sensitive_data():
     """✅ SECURE: Token-based auth, not URL API keys"""
@@ -722,7 +719,7 @@ def sensitive_data():
         "accessed_at": datetime.now().isoformat()
     })
 
-@app.route('/api/v1/profile', methods=['GET', 'POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/profile', methods=['GET', 'POST', 'OPTIONS'])
 @require_auth
 def profile():
     """✅ FIX 7: SECURE: CORS properly configured in app init"""
@@ -739,7 +736,7 @@ def profile():
         "role": request.user['role']
     })
 
-@app.route('/api/v1/user/update', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/user/update', methods=['POST', 'OPTIONS'])
 @require_auth
 def update_user_secure():
     """✅ FIX 8: SECURE: Only allow safe fields"""
@@ -761,10 +758,6 @@ def update_user_secure():
         if field in data:
             user[field] = data[field]
     
-    # ✅ NEVER update these fields!
-    # user['role'] = data.get('role')  # DON'T DO THIS!
-    # user['is_admin'] = data.get('is_admin')  # DON'T DO THIS!
-    
     return jsonify({
         "status": "updated",
         "user": {
@@ -774,7 +767,7 @@ def update_user_secure():
         }
     })
 
-@app.route('/api/v1/cache/load', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/cache/load', methods=['POST', 'OPTIONS'])
 @require_auth
 def load_cache():
     """✅ FIX 9: SECURE: Use JSON instead of pickle"""
@@ -796,7 +789,7 @@ def load_cache():
     except:
         return jsonify({"error": "Invalid JSON"}), 400
 
-@app.route('/api/v1/brute/login', methods=['POST', 'OPTIONS'])
+@app.route('/security-api/secure/api/brute/login', methods=['POST', 'OPTIONS'])
 @limiter.limit("5 per minute")
 def brute_force_protected():
     """✅ FIX 5: Rate limiting prevents brute force"""
@@ -827,7 +820,7 @@ def brute_force_protected():
 # INFO & HEALTH
 # ============================================
 
-@app.route('/health', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/health', methods=['GET', 'OPTIONS'])
 def health():
     """Health check"""
     if request.method == 'OPTIONS':
@@ -835,7 +828,7 @@ def health():
     
     return jsonify({"status": "ok", "service": "Secure API"})
 
-@app.route('/api/v1/info', methods=['GET', 'OPTIONS'])
+@app.route('/security-api/secure/api/info', methods=['GET', 'OPTIONS'])
 def api_info():
     """API information"""
     if request.method == 'OPTIONS':
@@ -845,52 +838,49 @@ def api_info():
         "name": "Secure API",
         "version": "2.0",
         "description": "Hardened API with security best practices",
-        "base_url": "http://localhost:3002",
+        "type": "HARDENED - All vulnerabilities fixed",
         "endpoints": {
             "authentication": {
-                "register": "POST /api/v1/auth/register",
-                "login": "POST /api/v1/auth/login",
-                "verify": "POST /api/v1/auth/verify"
+                "register": "POST /security-api/secure/api/auth/register",
+                "login": "POST /security-api/secure/api/auth/login",
+                "verify": "POST /security-api/secure/api/auth/verify"
             },
             "users": {
-                "list": "GET /api/v1/users (requires auth)",
-                "get": "GET /api/v1/users/:id (requires auth)",
-                "create": "POST /api/v1/users (requires admin)",
-                "update": "PUT /api/v1/users/:id (requires auth + ownership)",
-                "delete": "DELETE /api/v1/users/:id (requires admin)"
+                "list": "GET /security-api/secure/api/users (requires auth)",
+                "get": "GET /security-api/secure/api/users/:id (requires auth)",
+                "create": "POST /security-api/secure/api/users (requires admin)",
+                "update": "PUT /security-api/secure/api/users/:id (requires auth + ownership)",
+                "delete": "DELETE /security-api/secure/api/users/:id (requires admin)"
             },
             "products": {
-                "list": "GET /api/v1/products (requires auth)",
-                "get": "GET /api/v1/products/:id (requires auth)",
-                "create": "POST /api/v1/products (requires admin)"
+                "list": "GET /security-api/secure/api/products (requires auth)",
+                "get": "GET /security-api/secure/api/products/:id (requires auth)",
+                "create": "POST /security-api/secure/api/products (requires admin)"
             },
             "orders": {
-                "list": "GET /api/v1/orders (requires auth, own orders only)",
-                "get": "GET /api/v1/orders/:id (requires auth, ownership check)",
-                "create": "POST /api/v1/orders (requires auth)"
+                "list": "GET /security-api/secure/api/orders (requires auth, own orders only)",
+                "get": "GET /security-api/secure/api/orders/:id (requires auth, ownership check)",
+                "create": "POST /security-api/secure/api/orders (requires auth)"
             },
             "data": {
-                "list": "GET /api/v1/data (requires auth, own data only)",
-                "create": "POST /api/v1/data (requires auth)"
+                "list": "GET /security-api/secure/api/data (requires auth, own data only)",
+                "create": "POST /security-api/secure/api/data (requires auth)"
             },
             "admin": {
-                "users": "GET /api/v1/admin/users (requires admin)"
+                "users": "GET /security-api/secure/api/admin/users (requires admin)"
             }
         },
         "security_features": [
-            "✅ Strong JWT with 24h expiration",
-            "✅ Parameterized queries (no SQL injection)",
-            "✅ Authentication on all protected endpoints",
-            "✅ Token-based API auth (not URLs)",
-            "✅ Rate limiting on login/brute endpoints",
-            "✅ IDOR prevention (ownership checks)",
-            "✅ CORS properly configured",
-            "✅ Field whitelisting (no mass assignment)",
-            "✅ JSON serialization (no pickle)",
-            "✅ Security headers",
-            "✅ Password hashing with bcrypt",
-            "✅ Input validation",
-            "✅ Admin role checks"
+            "✅ FIX 1: Strong JWT with 24h expiration",
+            "✅ FIX 2: Parameterized queries (no SQL injection)",
+            "✅ FIX 3: Authentication on all protected endpoints",
+            "✅ FIX 4: Token-based API auth (not URLs)",
+            "✅ FIX 5: Rate limiting on login/brute endpoints",
+            "✅ FIX 6: IDOR prevention (ownership checks)",
+            "✅ FIX 7: CORS properly configured",
+            "✅ FIX 8: Field whitelisting (no mass assignment)",
+            "✅ FIX 9: JSON serialization (no pickle)",
+            "✅ FIX 10: Security headers"
         ]
     })
 
@@ -898,7 +888,7 @@ if __name__ == '__main__':
     print("\n" + "="*70)
     print("🔐 SECURE API SERVER")
     print("="*70)
-    print("\n✅ SECURITY FEATURES:")
+    print("\n✅ SECURITY FIXES:")
     print("  1. Strong JWT with expiration")
     print("  2. Parameterized queries")
     print("  3. Authentication required")
@@ -909,16 +899,16 @@ if __name__ == '__main__':
     print("  8. Field whitelisting")
     print("  9. JSON serialization")
     print("  10. Security headers")
-    print("\n📋 ENDPOINTS:")
-    print("  Auth: register, login, verify")
-    print("  Users: list, get, create (admin), update, delete (admin)")
-    print("  Products: list, get, create (admin)")
-    print("  Orders: list, get, create")
-    print("  Data: list, create")
-    print("  Admin: users list")
-    print("  Security: sensitive data, profile, update, cache, brute")
-    print("\n🌐 API: http://localhost:3002")
-    print("📊 Info: http://localhost:3002/api/v1/info")
+    print("\n📋 ENDPOINT PATHS:")
+    print("  /security-api/secure/api/auth/register")
+    print("  /security-api/secure/api/auth/login")
+    print("  /security-api/secure/api/users")
+    print("  /security-api/secure/api/products")
+    print("  /security-api/secure/api/orders")
+    print("  /security-api/secure/api/data")
+    print("  /security-api/secure/api/admin/users")
+    print("\n🌐 API: http://localhost:8001")
+    print("📊 Info: http://localhost:8001/security-api/secure/api/info")
     print("="*70 + "\n")
     
-    app.run(debug=False, port=3002, host='0.0.0.0')
+    app.run(debug=False, port=8001, host='0.0.0.0')
