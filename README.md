@@ -1,735 +1,588 @@
-# API Testing Console - Unified Security Suite
+# 🔐 API Security Testing Suite
 
-A professional-grade API testing dashboard combining secure and insecure API implementations for educational and comparative testing.
+<div align="center">
 
-## Table of Contents
+> **Educational platform for mastering API security** — Compare secure vs insecure implementations across **10 OWASP Top vulnerabilities**
 
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [API Endpoints](#api-endpoints)
-- [Testing Guide](#testing-guide)
-- [Security Comparison](#security-comparison)
-- [Advanced Usage](#advanced-usage)
-- [Troubleshooting](#troubleshooting)
-- [Demo](#demo)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-2.0%2B-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![React](https://img.shields.io/badge/React-18%2B-61dafb?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ed?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
----
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![OWASP](https://img.shields.io/badge/OWASP-Top%2010-ff6b00?style=for-the-badge&logo=owasp&logoColor=white)](https://owasp.org/)
+[![License](https://img.shields.io/badge/License-Educational-green?style=for-the-badge)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)](#)
 
-## Overview
+<br>
 
-This suite provides:
+**[Quick Start](#-quick-start)** • **[Features](#features)** • **[Endpoints](#-endpoints-overview)** • **[Testing Guide](#-real-world-testing-examples)** • **[Learn More](#-key-learnings)**
 
-- **Secure API**: Production-ready implementation with best practices
-- **Insecure API**: Intentionally vulnerable for learning security flaws
-- **Testing Dashboard**: Professional frontend to test and compare both APIs
-
-### Key Features
-
-- Toggle between Secure and Insecure APIs
-- Full HTTP method support (GET, POST, PUT, PATCH, DELETE)
-- Custom header management
-- Request body editing with JSON validation
-- Real-time response display with status codes
-- Response time metrics
-- Glass morphism UI design
-- Professional typography
+</div>
 
 ---
 
-## Quick Start
+## ✨ Features
 
-### Prerequisites
+| Feature | Details |
+|---------|---------|
+| 🔄 **Dual API Mode** | Compare secure & insecure implementations side-by-side |
+| 🛣️ **17 Endpoints** | Full CRUD operations with real production vulnerabilities |
+| 🎯 **Real Vulnerabilities** | All 10 OWASP Top flaws demonstrated with live examples |
+| 📊 **Interactive Dashboard** | Test both APIs simultaneously with live feedback |
+| 🎨 **Glass UI** | Professional modern interface with real-time validation |
+| 🐳 **Docker Ready** | One-command setup with docker-compose |
+| 📚 **Educational** | Learn by exploiting vs defending the same endpoints |
 
-- Docker & Docker Compose
-- Modern web browser
-- 20 minutes
+---
 
-### Running the Suite
+## 🚀 Quick Start
 
+### Option 1: Docker Compose (Recommended) ⭐
 ```bash
-# From your project root
+docker-compose up -d
+```
+
+Access the suite:
+- **Dashboard:** http://localhost:5000
+- **Secure API:** http://localhost:8001
+- **Insecure API:** http://localhost:8000
+
+### Option 2: Local Development
+
+**Backend Setup:**
+```bash
+pip install -r requirements.txt
+python app.py  # Runs on http://localhost:8001 & 8000
+```
+
+**Frontend Setup:**
+```bash
+cd frontend
+npm install
+npm start  # Runs on http://localhost:5000
+```
+
+---
+
+## 🔐 Security Comparison Matrix
+
+### Secure API (Port 8001) ✅
+
+```
+Authentication      │ JWT + bcrypt (24h expiration)
+Authorization       │ Role-based access control
+Input Validation    │ Strict (email, password strength)
+SQL Injection       │ Parameterized queries
+Rate Limiting       │ 5 attempts/minute
+IDOR Protection     │ Ownership verification
+API Keys           │ Bearer token in headers
+Mass Assignment     │ Field whitelisting
+CORS               │ Restricted origins
+Security Headers   │ CSP, X-Frame, HSTS, etc
+```
+
+### Insecure API (Port 8000) ❌
+
+```
+Authentication      │ ❌ Weak JWT (hardcoded secret)
+Authorization       │ ❌ NONE
+Input Validation    │ ❌ NONE
+SQL Injection       │ ❌ String concatenation
+Rate Limiting       │ ❌ NONE
+IDOR Protection     │ ❌ NONE
+API Keys           │ ❌ URL parameters
+Mass Assignment     │ ❌ All fields accepted
+CORS               │ ❌ Allows all origins (*)
+Security Headers   │ ❌ NONE
+```
+
+---
+
+## 💡 Real-World Testing Examples
+
+### Test 1: Weak Password Validation
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+curl -X POST http://localhost:8001/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"123"}'
+```
+Response: **400 Bad Request**
+```json
+{"error": "Password must be at least 8 characters with mixed case"}
+```
+
+**Insecure API ❌**
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"123"}'
+```
+Response: **201 Created** (Password exposed in response!)
+```json
+{"id": 1, "email": "test@example.com", "password": "123"}
+```
+</details>
+
+### Test 2: Unauthenticated User Enumeration
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+curl http://localhost:8001/api/v1/users
+```
+Response: **401 Unauthorized**
+```json
+{"error": "Authentication required"}
+```
+
+**Insecure API ❌**
+```bash
+curl http://localhost:8000/api/v1/users
+```
+Response: **200 OK** - ALL USERS EXPOSED!
+```json
+[
+  {"id": 1, "email": "admin@example.com", "password": "admin123"},
+  {"id": 2, "email": "user@example.com", "password": "password123"}
+]
+```
+</details>
+
+### Test 3: User Impersonation (Create Orders)
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+curl -X POST http://localhost:8001/api/v1/orders \
+  -H "Authorization: Bearer <valid_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"total":99.99,"items":["item1","item2"]}'
+```
+Response: **201 Created** (Order created for authenticated user only)
+
+**Insecure API ❌**
+```bash
+curl -X POST http://localhost:8000/api/v1/orders \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":999,"total":1000000,"items":["free_item"]}'
+```
+Response: **201 Created** (Order created as ANY user!)
+```json
+{"id": 100, "user_id": 999, "total": 1000000, "created_by": "attacker"}
+```
+</details>
+
+### Test 4: SQL Injection
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+curl http://localhost:8001/api/v1/users/1%20OR%201=1
+```
+Response: **404 Not Found** (Safe parameterized query)
+
+**Insecure API ❌**
+```bash
+curl http://localhost:8000/api/v1/users/1%20OR%201=1
+```
+Response: **200 OK** (Vulnerable!)
+```json
+[
+  {"id": 1, "email": "admin@example.com"},
+  {"id": 2, "email": "user@example.com"}
+]
+```
+Raw Query: `SELECT * FROM users WHERE id = 1 OR 1=1`
+</details>
+
+### Test 5: IDOR (Insecure Direct Object Reference)
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+curl -H "Authorization: Bearer <user2_token>" \
+     http://localhost:8001/api/v1/orders/1
+```
+Response: **403 Forbidden** (Ownership check enforced)
+
+**Insecure API ❌**
+```bash
+curl http://localhost:8000/api/v1/orders/1
+curl http://localhost:8000/api/v1/orders/2
+curl http://localhost:8000/api/v1/orders/999
+```
+Response: **200 OK** (Returns anyone's order!)
+```json
+{"id": 1, "user_id": 2, "total": 500.00, "items": [...]}
+```
+</details>
+
+### Test 6: Mass Assignment / Privilege Escalation
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+curl -X POST http://localhost:8001/api/v1/user/update \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John","role":"admin"}'
+```
+Response: **200 OK** (Field ignored, role stays "user")
+```json
+{"name": "John", "role": "user"}
+```
+
+**Insecure API ❌**
+```bash
+curl -X POST http://localhost:8000/api/v1/user/update \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Hacker","role":"admin","email":"new@example.com"}'
+```
+Response: **200 OK** (User is now admin!)
+```json
+{"name": "Hacker", "role": "admin", "email": "new@example.com"}
+```
+</details>
+
+### Test 7: Brute Force / No Rate Limiting
+<details>
+<summary><strong>Expand to see responses</strong></summary>
+
+**Secure API ✅**
+```bash
+# Requests 1-5: 200 OK
+# Request 6+: 429 Too Many Requests (Rate limited)
+```
+
+**Insecure API ❌**
+```bash
+for i in {1..100}; do
+  curl -X POST http://localhost:8000/api/v1/auth/login \
+    -d '{"email":"admin@example.com","password":"attempt'$i'"}'
+done
+# All 100 requests succeed instantly - NO RATE LIMITING!
+```
+</details>
+
+---
+
+## 🛣️ Endpoints Overview
+
+### Secure API (8001) - 17 Protected Endpoints
+
+```yaml
+Authentication:
+  POST   /api/v1/auth/register       ✅ Input validation + password hashing
+  POST   /api/v1/auth/login          ✅ Secure JWT with expiration
+  POST   /api/v1/auth/verify         ✅ Token validation
+
+User Management:
+  GET    /api/v1/users               ✅ Authentication required
+  GET    /api/v1/users/:id           ✅ Parameterized queries
+  GET    /api/v1/admin/users         ✅ Admin role enforcement
+  POST   /api/v1/user/update         ✅ Field whitelisting
+
+Data Access:
+  GET    /api/v1/products            ✅ Auth required
+  GET    /api/v1/data                ✅ Own data only (IDOR proof)
+  GET    /api/v1/data/sensitive      ✅ Bearer token auth
+  GET|POST /api/v1/profile           ✅ CORS protected
+
+Order Management:
+  GET|POST /api/v1/orders            ✅ Ownership verification
+  GET    /api/v1/orders/:id          ✅ IDOR prevention
+
+Utilities:
+  POST   /api/v1/cache/load          ✅ JSON only (no pickle)
+  GET    /health                     ✅ Security headers
+  GET    /api/v1/info                ✅ Safe information
+```
+
+### Insecure API (8000) - 17 Vulnerable Endpoints
+
+```yaml
+Authentication:
+  POST   /api/v1/auth/register       ❌ No validation
+  POST   /api/v1/auth/login          ❌ Weak JWT secret
+  POST   /api/v1/auth/verify         ❌ Hardcoded secret
+
+User Management:
+  GET    /api/v1/users               ❌ NO AUTH - Full enumeration
+  GET    /api/v1/users/:id           ❌ SQL injection vulnerable
+  GET    /api/v1/admin/users         ❌ NO AUTH - Anyone is admin
+  POST   /api/v1/user/update         ❌ Mass assignment
+
+Data Access:
+  GET    /api/v1/products            ❌ No authentication
+  GET    /api/v1/data                ❌ IDOR - Access anyone's data
+  GET    /api/v1/data/sensitive      ❌ API key in URL parameter
+  GET|POST /api/v1/profile           ❌ CORS allow all origins
+
+Order Management:
+  GET|POST /api/v1/orders            ❌ Can impersonate any user
+  GET    /api/v1/orders/:id          ❌ IDOR - Full access
+
+Utilities:
+  POST   /api/v1/cache/load          ❌ Pickle RCE vulnerability
+  POST   /api/v1/brute/login         ❌ No rate limiting
+  GET    /api/v1/info                ❌ No security headers
+```
+
+---
+
+## 🎯 Test Credentials
+
+```yaml
+Admin Account:
+  Email:    admin@example.com
+  Password: admin123
+
+Regular User:
+  Email:    user@example.com
+  Password: password123
+
+Test User:
+  Email:    test@example.com
+  Password: password123
+```
+
+---
+
+## 📋 10 OWASP Top Vulnerabilities Demonstrated
+
+| # | Vulnerability | Secure Pattern | Insecure Pattern |
+|---|---|---|---|
+| 1️⃣ | **JWT Token Issues** | Strong secret, 24h expiration | Hardcoded secret, no expiration |
+| 2️⃣ | **SQL Injection** | Parameterized queries | String concatenation |
+| 3️⃣ | **Broken Authentication** | bcrypt + validation | Plain text passwords |
+| 4️⃣ | **API Key Issues** | Bearer headers | URL parameters |
+| 5️⃣ | **Missing Rate Limiting** | 5 req/min enforcement | Unlimited requests |
+| 6️⃣ | **IDOR** | Ownership verification | Direct object access |
+| 7️⃣ | **CORS Misconfiguration** | Restricted origins | Allow all (*) |
+| 8️⃣ | **Mass Assignment** | Field whitelisting | Accept any field |
+| 9️⃣ | **Insecure Deserialization** | JSON only | Pickle RCE |
+| 🔟 | **Missing Security Headers** | CSP, HSTS, X-Frame | No headers |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    API Testing Suite                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌────────────────┐  ┌────────────────┐  ┌──────────────┐  │
+│  │  Dashboard     │  │  Secure API    │  │ Insecure API │  │
+│  │  (React)       │  │  Port 8001     │  │  Port 8000   │  │
+│  │  Port 5000     │  │  ✅ Hardened   │  │  ❌ Vulns    │  │
+│  └────────────────┘  └────────────────┘  └──────────────┘  │
+│          │                   │                   │            │
+│          └───────────────────┴───────────────────┘            │
+│                               │                               │
+│                      ┌────────────────┐                       │
+│                      │  PostgreSQL    │                       │
+│                      │  Data Storage  │                       │
+│                      └────────────────┘                       │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🛠️ Requirements
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| 🐳 Docker | Latest | Containerization |
+| 🐳 Docker Compose | Latest | Orchestration |
+| 🟢 Node.js | 18+ | Frontend build (local only) |
+| 🐍 Python | 3.9+ | Backend runtime (local only) |
+| 🗄️ PostgreSQL | 13+ | Database (included in compose) |
+
+---
+
+## 📦 Installation & Usage
+
+### Start Services
+```bash
+# Launch entire suite
+docker-compose up -d
+
+# Follow logs in real-time
+docker-compose logs -f
+```
+
+### Access Points
+```
+Dashboard:     http://localhost:5000
+Secure API:    http://localhost:8001/api/v1
+Insecure API:  http://localhost:8000/api/v1
+Health Check:  http://localhost:8001/health
+```
+
+### Stop Services
+```bash
+docker-compose down
+```
+
+### Complete Reset
+```bash
 docker-compose down -v
 docker-compose build --no-cache
 docker-compose up -d
-
-# Wait for services to start
-sleep 10
-
-# Check status
-docker ps
 ```
 
-### Access the Dashboard
-
-```
-Frontend:      http://localhost:5000
-Secure API:    http://localhost:3000
-Insecure API:  http://localhost:3001
-Database:      localhost:5432
-```
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│      Frontend Dashboard (React)         │
-│  http://localhost:5000                  │
-│  - Glass morphism UI                    │
-│  - Dual API testing mode                │
-│  - Real-time response visualization     │
-└────────────┬────────────────────────────┘
-             │
-      ┌──────┴──────┐
-      │             │
-      ▼             ▼
-┌──────────────┐ ┌──────────────┐
-│ Secure API   │ │ Insecure API │
-│ :3000        │ │ :3001        │
-│ Flask        │ │ Flask        │
-│ Best Practices
-│ JWT, Validation
-│ Rate Limiting │ │ No Security  │
-│ Security     │ │ SQL Injection│
-│ Headers      │ │ No Auth      │
-└──────┬───────┘ └──────┬───────┘
-       │                │
-       └────────┬───────┘
-                │
-                ▼
-        ┌──────────────┐
-        │ PostgreSQL   │
-        │ :5432        │
-        └──────────────┘
-```
-
----
-
-## API Endpoints
-
-### Secure API (Protected)
-
-Base URL: `http://localhost:3000`
-
-#### Authentication
-
-```
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/refresh
-```
-
-#### Users
-
-```
-GET    /api/v1/users
-GET    /api/v1/users/:id
-POST   /api/v1/users
-PUT    /api/v1/users/:id
-DELETE /api/v1/users/:id
-```
-
-#### Data
-
-```
-GET  /api/v1/data
-POST /api/v1/data
-```
-
-#### Health
-
-```
-GET /health
-GET /api/v1/info
-```
-
----
-
-### Insecure API (Vulnerable)
-
-Base URL: `http://localhost:3001`
-
-#### Authentication (No Protection)
-
-```
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-```
-
-#### Users (No Authorization)
-
-```
-GET    /api/v1/users
-GET    /api/v1/users/:id
-POST   /api/v1/users
-PUT    /api/v1/users/:id
-DELETE /api/v1/users/:id
-```
-
-#### Data (No Validation)
-
-```
-GET  /api/v1/data
-POST /api/v1/data
-```
-
-#### Health (No Rate Limiting)
-
-```
-GET /health
-GET /api/v1/info
-```
-
----
-
-## Testing Guide
-
-### Test 1: Basic Health Check
-
-**Purpose**: Verify API connectivity
-
-**Steps**:
-
-1. Open http://localhost:5000
-2. Toggle to **Secure API**
-3. Endpoint: `/health`
-4. Method: `GET`
-5. Click **Send**
-
-**Expected Response (Secure)**:
-```json
-{
-  "status": "ok",
-  "timestamp": "2025-12-30T00:00:00Z"
-}
-```
-
-**Expected Response (Insecure)**:
-```json
-{
-  "status": "running",
-  "message": "API is operational"
-}
-```
-
----
-
-### Test 2: API Information
-
-**Purpose**: View API implementation details
-
-**Endpoint**: `/api/v1/info`
-**Method**: `GET`
-
-**Secure API Response**:
-```json
-{
-  "name": "Secure API",
-  "version": "1.0.0",
-  "security": [
-    "JWT Authentication",
-    "Input Validation",
-    "Rate Limiting",
-    "CORS Protection",
-    "Security Headers"
-  ]
-}
-```
-
-**Insecure API Response**:
-```json
-{
-  "name": "Insecure API",
-  "version": "1.0.0",
-  "features": [
-    "No authentication",
-    "No validation",
-    "SQL injection possible",
-    "CORS misconfigured"
-  ]
-}
-```
-
----
-
-### Test 3: User Registration
-
-**Purpose**: Test authentication implementation
-
-**Endpoint**: `/api/v1/auth/register`
-**Method**: `POST`
-
-**Request Body**:
-```json
-{
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "SecurePass123!",
-  "name": "Test User"
-}
-```
-
-**Secure API Response** (Status 201):
-```json
-{
-  "id": "user-123",
-  "username": "testuser",
-  "email": "test@example.com",
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "expiresIn": 3600
-}
-```
-
-**Insecure API Response** (Status 200, No Validation):
-```json
-{
-  "id": 1,
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "SecurePass123!"
-}
-```
-
-**Security Differences**:
-- ✅ Secure: Password hashed, JWT token returned, validation enforced
-- ❌ Insecure: Password stored plain text, no token, no input validation
-
----
-
-### Test 4: User Login
-
-**Purpose**: Test authentication mechanism
-
-**Endpoint**: `/api/v1/auth/login`
-**Method**: `POST`
-
-**Request Body**:
-```json
-{
-  "username": "testuser",
-  "password": "SecurePass123!"
-}
-```
-
-**Secure API Response** (Status 200):
-```json
-{
-  "user": {
-    "id": "user-123",
-    "username": "testuser",
-    "email": "test@example.com"
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresIn": 3600,
-  "refreshToken": "refresh-token-xyz"
-}
-```
-
-**Insecure API Response** (Status 200, No Validation):
-```json
-{
-  "id": 1,
-  "username": "testuser",
-  "email": "test@example.com",
-  "authenticated": true
-}
-```
-
-**Security Differences**:
-- ✅ Secure: JWT tokens, expiration, refresh mechanism
-- ❌ Insecure: No tokens, no expiration, no security validation
-
----
-
-### Test 5: Get Protected Data
-
-**Purpose**: Test authorization
-
-**Endpoint**: `/api/v1/users/1`
-**Method**: `GET`
-
-**Without Authorization**:
-
-**Secure API Response** (Status 401):
-```json
-{
-  "error": "Unauthorized",
-  "message": "No token provided"
-}
-```
-
-**Insecure API Response** (Status 200, Data Exposed):
-```json
-{
-  "id": 1,
-  "username": "testuser",
-  "email": "test@example.com",
-  "phone": "555-1234",
-  "address": "123 Main St"
-}
-```
-
-**With Authorization Header**:
-
-Add header:
-```json
-{
-  "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Secure API Response** (Status 200, Authorized):
-```json
-{
-  "id": "user-123",
-  "username": "testuser",
-  "email": "test@example.com"
-}
-```
-
-**Security Differences**:
-- ✅ Secure: Requires valid JWT token
-- ❌ Insecure: No authentication required, data exposed
-
----
-
-### Test 6: SQL Injection Vulnerability
-
-**Purpose**: Demonstrate input validation differences
-
-**Endpoint**: `/api/v1/users/1`
-**Method**: `GET`
-
-**Test Payload**: `1 OR 1=1`
-
-**Secure API Response** (Status 400):
-```json
-{
-  "error": "Invalid input",
-  "message": "User ID must be numeric"
-}
-```
-
-**Insecure API Response** (Status 200, Vulnerable):
-```json
-[
-  {
-    "id": 1,
-    "username": "user1",
-    "email": "user1@example.com"
-  },
-  {
-    "id": 2,
-    "username": "user2",
-    "email": "user2@example.com"
-  },
-  ...
-]
-```
-
-**Security Differences**:
-- ✅ Secure: Input validation, parameterized queries
-- ❌ Insecure: No validation, SQL injection possible
-
----
-
-### Test 7: Rate Limiting
-
-**Purpose**: Test DoS protection
-
-**Setup**: Send multiple rapid requests to `/api/v1/users`
-
-**Secure API Response** (After 100 requests/minute):
-```json
-{
-  "error": "Too many requests",
-  "message": "Rate limit exceeded",
-  "retryAfter": 60
-}
-```
-
-**Insecure API Response** (No Limit):
-```json
-{
-  "users": [...]
-}
-```
-
-**Security Differences**:
-- ✅ Secure: Rate limiting, anti-DoS protection
-- ❌ Insecure: No rate limiting, vulnerable to abuse
-
----
-
-### Test 8: CORS Policy
-
-**Purpose**: Test cross-origin security
-
-**Test**: Open browser console and make fetch request from different origin
-
-**Secure API Response**:
-```
-Access-Control-Allow-Origin: http://localhost:5000
-Access-Control-Allow-Methods: GET, POST, PUT, DELETE
-Access-Control-Allow-Headers: Content-Type, Authorization
-```
-
-**Insecure API Response**:
-```
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: *
-Access-Control-Allow-Headers: *
-```
-
-**Security Differences**:
-- ✅ Secure: Restrictive CORS, whitelist only allowed origins
-- ❌ Insecure: Open CORS, allows any origin
-
----
-
-## Security Comparison
-
-### Feature Matrix
-
-| Feature | Secure | Insecure |
-|---------|--------|----------|
-| **Authentication** | JWT with expiration | None |
-| **Input Validation** | Strict type checking | None |
-| **SQL Injection Protection** | Parameterized queries | Raw queries |
-| **Rate Limiting** | Yes (100 req/min) | No |
-| **CORS Policy** | Restrictive | Open |
-| **Password Hashing** | bcrypt | Plain text |
-| **Security Headers** | HSTS, X-Frame, CSP | None |
-| **HTTPS** | Required | HTTP only |
-| **Error Messages** | Generic | Detailed (info leakage) |
-| **Token Expiration** | 1 hour | N/A |
-| **Refresh Tokens** | Yes | No |
-| **API Versioning** | v1 | v1 |
-| **Logging** | Security events | Minimal |
-| **Authorization** | Role-based | None |
-| **Data Encryption** | At rest & transit | Transit only |
-
----
-
-## Advanced Usage
-
-### Custom Headers
-
-Test custom authentication schemes:
-
-1. Click **Secure API**
-2. Add Headers (JSON):
-```json
-{
-  "Authorization": "Bearer YOUR_JWT_TOKEN",
-  "X-API-Key": "your-api-key",
-  "X-Request-ID": "123456"
-}
-```
-3. Send request
-
-### Request Body Testing
-
-Test POST/PUT operations:
-
-1. Select Method: `POST`
-2. Endpoint: `/api/v1/users`
-3. Body:
-```json
-{
-  "username": "newuser",
-  "email": "new@example.com",
-  "password": "SecurePass123!",
-  "name": "New User"
-}
-```
-4. Send and observe response
-
-### Comparing Responses
-
-**Side-by-side comparison**:
-
-1. Send request to **Secure API**, note response time
-2. Toggle to **Insecure API**
-3. Send same request, compare:
-   - Status code
-   - Response time
-   - Data returned
-   - Security headers
-
-### Testing Error Handling
-
-1. **Invalid endpoint**: `/api/v1/nonexistent`
-   - Secure: 404 "Not Found"
-   - Insecure: 404 with stack trace
-
-2. **Missing required fields**: Send incomplete JSON
-   - Secure: 400 "Validation failed"
-   - Insecure: 500 with database error
-
-3. **Type mismatch**: Send string where number expected
-   - Secure: 400 "Invalid type"
-   - Insecure: 500 database error
-
----
-
-## Troubleshooting
-
-### Frontend Not Loading
-
+### View Logs
 ```bash
-# Check frontend logs
-docker-compose logs frontend
+# All services
+docker-compose logs -f
 
-# Verify container is running
-docker ps | grep frontend
-
-# Rebuild without cache
-docker-compose build --no-cache frontend
-docker-compose up -d frontend
+# Specific service
+docker-compose logs -f secure-api
+docker-compose logs -f insecure-api
+docker-compose logs -f react-dashboard
 ```
-
-### APIs Not Responding
-
-```bash
-# Check API logs
-docker-compose logs secure-api
-docker-compose logs insecure-api
-
-# Verify database connection
-docker-compose logs postgres
-
-# Test connectivity
-curl http://localhost:3000/health
-curl http://localhost:3001/health
-```
-
-### Database Connection Issues
-
-```bash
-# Check database logs
-docker-compose logs postgres
-
-# Verify database is running
-docker exec security-api-db psql -U postgres -l
-
-# Reset database
-docker-compose down -v
-docker-compose up -d
-```
-
-### CORS Errors
-
-**Browser Console Error**:
-```
-Access to XMLHttpRequest at 'http://localhost:3000' blocked by CORS policy
-```
-
-**Solution**:
-- Ensure frontend runs on `localhost:5000`
-- Check CORS headers in API responses
-- Verify API CORS configuration
 
 ---
 
-### Security Testing Checklist
+## 📚 Key Learnings
 
-- [ ] Test all HTTP methods
-- [ ] Test with and without authentication
-- [ ] Try invalid input formats
-- [ ] Check error message leakage
-- [ ] Test rate limiting
-- [ ] Verify CORS headers
-- [ ] Check security headers
-- [ ] Test token expiration
-- [ ] Try privilege escalation
-- [ ] Test data access control
+By completing this hands-on suite, you'll master:
 
----
+✅ **Authentication & Authorization**
+- Implementing JWT with bcrypt hashing
+- Role-based access control (RBAC)
+- Secure session management
 
-## Performance Metrics
+✅ **Input Validation**
+- Parameterized SQL queries
+- Input sanitization techniques
+- Password strength requirements
 
-### Expected Response Times
+✅ **API Security**
+- Bearer token authentication
+- Rate limiting & DDoS protection
+- CORS policy configuration
 
-| Operation | Secure | Insecure | Notes |
-|-----------|--------|----------|-------|
-| GET /health | 10-20ms | 5-10ms | Secure adds validation |
-| GET /users | 50-100ms | 30-50ms | Database queries |
-| POST register | 100-200ms | 50-100ms | Secure hashes password |
-| POST login | 150-250ms | 50-100ms | Secure validates token |
-| GET /users/:id | 20-40ms | 10-20ms | Direct lookup |
+✅ **Access Control**
+- IDOR vulnerability prevention
+- Ownership verification patterns
+- Field whitelisting
 
-### Observations
+✅ **Secure Coding**
+- Password hashing best practices
+- Security headers implementation
+- Insecure deserialization risks
 
-- Secure API is slower due to validation/encryption
-- Insecure API responds faster (no security overhead)
-- Database queries dominate response time
-- Network latency is the bottleneck
-
----
-
-## API Documentation
-
-### Status Codes
-
-| Code | Meaning | Secure API | Insecure API |
-|------|---------|-----------|-------------|
-| 200 | OK | Success | Success |
-| 201 | Created | Resource created | Resource created |
-| 400 | Bad Request | Validation error | Sometimes skipped |
-| 401 | Unauthorized | No token | Never returned |
-| 403 | Forbidden | No permission | Never returned |
-| 404 | Not Found | Endpoint missing | Endpoint missing |
-| 429 | Rate Limited | After limit | Never returned |
-| 500 | Server Error | Rare | Frequent |
+✅ **All 10 OWASP Top API Vulnerabilities**
+- Live examples of each vulnerability
+- Secure implementation patterns
+- Real-world exploit demonstrations
 
 ---
 
-### External Resources
+## ❓ FAQ
+
+**Q: Is the Secure API production-ready?**  
+A: The security patterns follow OWASP best practices and can be adapted for production use. Always conduct thorough security testing before deployment.
+
+**Q: Why compare vulnerable code side-by-side?**  
+A: Side-by-side comparison is one of the most effective learning methods. Seeing the attack vs. defense together reinforces security principles.
+
+**Q: How long does setup take?**  
+A: Under 1 minute with Docker Compose. Run `docker-compose up -d` and you're ready to test.
+
+**Q: Can I modify the code?**  
+A: Absolutely! Both APIs are educational tools. Modify, experiment, and learn by breaking things.
+
+**Q: What if I want to test locally?**  
+A: Use Option 2 (Local Development). Install requirements and run `python app.py` for the backend.
+
+**Q: Are there any prerequisites?**  
+A: Just Docker & Docker Compose. Everything else is included in the containers.
+
+---
+
+## ⚠️ Important Disclaimer
+
+### The Insecure API is intentionally vulnerable for educational purposes only
+
+```
+🚫 DO NOT use insecure patterns in production
+🚫 DO NOT expose this suite to the internet
+🚫 DO NOT deploy vulnerable code to any public environment
+✅ DO use in controlled learning/lab environments
+✅ DO follow Secure API patterns for real applications
+✅ DO conduct security audits before production deployment
+```
+
+---
+
+## 🎓 Educational Resources
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-- [CWE Top 25](https://cwe.mitre.org/top25/)
-- [REST API Security](https://cheatsheetseries.owasp.org/cheatsheets/REST_Assessment_Cheat_Sheet.html)
-- [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
+- [OWASP API Security](https://owasp.org/www-project-api-security/)
+- [Flask Security Best Practices](https://flask.palletsprojects.com/en/2.3.x/security/)
+- [JWT Authentication](https://jwt.io/)
+- [CORS Explained](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 
 ---
 
+## 📈 Project Stats
+
+| Metric | Value |
+|--------|-------|
+| 🔐 OWASP Vulnerabilities | 10 |
+| 🛣️ Total Endpoints | 34 (17 × 2) |
+| 📊 Test Cases | 30+ |
+| 🐳 Docker Services | 4 |
+| 📚 Documentation | Comprehensive |
+| ⏱️ Setup Time | < 1 minute |
+
 ---
-## Demo
+
+## 🤝 Demo
+
+---
 
 [api_tester.webm](https://github.com/user-attachments/assets/8f35b114-6235-419c-ad00-5be8307a1d59)
 
 [Demo](https://adragportfolio.info.gf/security-api)
----
-
-## License
-
-MIT License - See LICENSE file for details
 
 ---
 
-## Author
+<div align="center">
 
-**DarkHexSage** - Security Engineer & Full-Stack Developer
+### Made with ❤️ for Security Engineers
 
-- GitHub: [@DarkHexSage](https://github.com/DarkHexSage)
+**Built for:** Full-stack security engineering portfolio  
+**Last Updated:** January 2026
+**Version:** 2.0.0
+
+<br>
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github)](https://github.com/)
+[![Security](https://img.shields.io/badge/Security-First-red?style=for-the-badge&logo=security)](https://owasp.org/)
+[![Learning](https://img.shields.io/badge/Learning-Focused-blue?style=for-the-badge&logo=brain)](https://www.owasp.org/)
+
+</div>
 
 ---
 
-## Disclaimer
+<details>
+<summary><strong>📄 License & Attribution</strong></summary>
 
-**The Insecure API is intentionally vulnerable for educational purposes only.**
+Educational project for learning API security. OWASP content used under creative commons license.
 
-- Do NOT use vulnerable patterns in production
-- Do NOT expose to the internet
-- Use only in controlled learning environments
-- Always follow the Secure API patterns for real applications
-
----
-
-**Built with ❤️ for the security community**
-
-Last Updated: December 2025
-Version: 1.0.0
+</details>
